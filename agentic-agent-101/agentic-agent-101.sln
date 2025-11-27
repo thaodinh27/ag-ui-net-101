@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11217.181 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "agentic-agent-101", "agentic-agent-101.csproj", "{345EF8C5-016F-A4FE-C36C-F685C201E8DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mcp-server-101", "..\mcp-server-101\mcp-server-101.csproj", "{199638B3-225E-6010-96C0-CA0F56E5A180}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{345EF8C5-016F-A4FE-C36C-F685C201E8DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{345EF8C5-016F-A4FE-C36C-F685C201E8DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{345EF8C5-016F-A4FE-C36C-F685C201E8DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{345EF8C5-016F-A4FE-C36C-F685C201E8DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{199638B3-225E-6010-96C0-CA0F56E5A180}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{199638B3-225E-6010-96C0-CA0F56E5A180}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{199638B3-225E-6010-96C0-CA0F56E5A180}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{199638B3-225E-6010-96C0-CA0F56E5A180}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {895FB6E2-AC97-46FF-AB3C-55B7F5E9DC0C}
+	EndGlobalSection
+EndGlobal
