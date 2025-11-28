@@ -1,0 +1,9 @@
+# replacements-template.txt
+# Usage: copy this file to `replacements.txt` and replace the placeholder values
+# with the exact secret strings you want to remove, then run the git-filter-repo command.
+
+<PASTE_SECRET_1_HERE>==>REDACTED
+<PASTE_SECRET_2_HERE>==>REDACTED
+
+# Example (do NOT commit the replacements.txt file):
+# your-api-key==>REDACTED
