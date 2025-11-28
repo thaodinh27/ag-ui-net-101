@@ -2,10 +2,8 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
-using ModelContextProtocol.Server;
-using System.ComponentModel;
-using System.Globalization;
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace mcp_server_101;
 
@@ -66,12 +64,12 @@ public static class WeatherTools
 /// <summary>
 /// This is a simple tool that echoes the message back to the client.
 /// </summary>
-[McpServerToolType]
-public static class EchoTool
-{
-    [McpServerTool, Description("Echoes the message back to the client.")]
-    public static string Echo(string message) => $"hello {message}";
-}
+// [McpServerToolType]
+// public static class EchoTool
+// {
+//     [McpServerTool, Description("Echoes the message back to the client.")]
+//     public static string Echo(string message) => $"hello {message}";
+// }
 
 /// <summary>
 /// This is a simple prompt that echoes the message back to the client.

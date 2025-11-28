@@ -14,7 +14,7 @@ namespace agentic_agent_101
         public static async Task<AIAgent> CreateAgent()
         {
             var endpoint = "https://b0906-udv-search-oai.openai.azure.com";
-            var key = "REDACTED";
+            var key = "your-azure-openai-key";
             var deploymentName = "gpt-5-chat";
             ChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
                 .GetChatClient(deploymentName);
@@ -46,6 +46,9 @@ namespace agentic_agent_101
                 Name = "MCP Client",
                 TransportMode = HttpTransportMode.StreamableHttp,
                 AdditionalHeaders = new Dictionary<string, string>()
+                {
+                    { "Authorization", "REDACTED" }
+                }
             };
 
             List<AITool> tools = [];
@@ -55,22 +58,22 @@ namespace agentic_agent_101
 
             // Azure Functions: MCP server
 
-            var httpClientTransportOptions2 = new HttpClientTransportOptions
-            {
-                Endpoint = new Uri("https://func-api-d52wwmub64tae.azurewebsites.net/runtime/webhooks/mcp"),
-                Name = "MCP Client",
-                TransportMode = HttpTransportMode.StreamableHttp,
-                AdditionalHeaders = new Dictionary<string, string>
-                {
-                    {
-                        "x-functions-key", "REDACTED"
-                    }
-                }
-            };
+            //var httpClientTransportOptions2 = new HttpClientTransportOptions
+            //{
+            //    Endpoint = new Uri("https://func-api-d52wwmub64tae.azurewebsites.net/runtime/webhooks/mcp"),
+            //    Name = "MCP Client",
+            //    TransportMode = HttpTransportMode.StreamableHttp,
+            //    AdditionalHeaders = new Dictionary<string, string>
+            //    {
+            //        {
+            //            "x-functions-key", "REDACTED"
+            //        }
+            //    }
+            //};
 
-            var mcpClient2 = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions2));
-            var externalTools2 = await mcpClient2.ListToolsAsync();
-            tools.AddRange(externalTools2);
+            //var mcpClient2 = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions2));
+            //var externalTools2 = await mcpClient2.ListToolsAsync();
+            //tools.AddRange(externalTools2);
 
             return tools;
         }
