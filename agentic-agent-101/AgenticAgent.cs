@@ -6,78 +6,96 @@ using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using OpenAI.Chat;
+using dotenv.net;
 
-namespace agentic_agent_101
+
+namespace agentic_agent_101;
+
+public static class AgenticAgent
 {
-    public static class AgenticAgent
-    {        
-        public static async Task<AIAgent> CreateAgent()
-        {
-            var endpoint = "https://b0906-udv-search-oai.openai.azure.com";
-            var key = "your-azure-openai-key";
-            var deploymentName = "gpt-5-chat";
-            ChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
-                .GetChatClient(deploymentName);
+    private static readonly Dictionary<string, string> envVars = new Dictionary<string, string>(DotEnv.Read());
+    public static async Task<AIAgent> CreateAgent()
+    {
 
 
-            var tools = await CollectTools();
-            AIAgent agent = chatClient.AsIChatClient().CreateAIAgent(
-                name: "AGUIAssistant",
-                instructions: "You are a helpful assistant.",
-                tools: tools);
-            
-            var middleAgent = agent.AsBuilder()
-                    //.Use(CustomAgentRunMiddleware)
-                    //.Use(CustomFunctionCallingMiddleware)
-                    .Build();
+        var endpoint = envVars["AZURE_OPENAI_ENDPOINT_URL"];
+        var key = envVars["AZURE_OPENAI_KEY"];
+        var deploymentName = "gpt-5-chat";
+        ChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
+            .GetChatClient(deploymentName);
 
 
-            return agent;
-        }
+        var tools = await CollectTools();
+        AIAgent agent = chatClient.AsIChatClient().CreateAIAgent(
+            name: "AGUIAssistant",
+            instructions: "You are a helpful assistant.",
+            tools: tools);
 
-        //public static 
+        var middleAgent = agent.AsBuilder()
+                //.Use(CustomAgentRunMiddleware)
+                //.Use(CustomFunctionCallingMiddleware)
+                .Build();
 
 
-        public static async Task<List<AITool>> CollectTools()
-        {
-            var httpClientTransportOptions = new HttpClientTransportOptions
-            {
-                Endpoint = new Uri("http://localhost:5146/mcp"),
-                Name = "MCP Client",
-                TransportMode = HttpTransportMode.StreamableHttp,
-                AdditionalHeaders = new Dictionary<string, string>()
-                {
-                    { "Authorization", "REDACTED" }
-                }
-            };
-
-            List<AITool> tools = [];
-            McpClient mcpClient = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions));
-            var externalTools = await mcpClient.ListToolsAsync();
-            tools.AddRange(externalTools);
-
-            // Azure Functions: MCP server
-
-            //var httpClientTransportOptions2 = new HttpClientTransportOptions
-            //{
-            //    Endpoint = new Uri("https://func-api-d52wwmub64tae.azurewebsites.net/runtime/webhooks/mcp"),
-            //    Name = "MCP Client",
-            //    TransportMode = HttpTransportMode.StreamableHttp,
-            //    AdditionalHeaders = new Dictionary<string, string>
-            //    {
-            //        {
-            //            "x-functions-key", "REDACTED"
-            //        }
-            //    }
-            //};
-
-            //var mcpClient2 = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions2));
-            //var externalTools2 = await mcpClient2.ListToolsAsync();
-            //tools.AddRange(externalTools2);
-
-            return tools;
-        }
-
-   
+        return agent;
     }
+
+    //public static 
+
+
+    public static async Task<List<AITool>> CollectTools()
+    {
+        var httpClientTransportOptions = new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(envVars["WEBAPP_MCP_SERVER_URL"]),
+            Name = "MCP Client",
+            TransportMode = HttpTransportMode.StreamableHttp,
+            AdditionalHeaders = new Dictionary<string, string>() {
+                    {"Authorization", envVars["WEBAPP_MCP_BEARER_TOKEN"] }
+                }
+        };
+        List<AITool> tools = new List<AITool>();
+        McpClient mcpClient = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions));
+        var externalTools = await mcpClient.ListToolsAsync();
+        tools.AddRange(externalTools);
+
+        // Azure Functions: MCP server
+
+        //var httpClientTransportOptions2 = new HttpClientTransportOptions
+        //{
+        //    Endpoint = new Uri("https://func-api-d52wwmub64tae.azurewebsites.net/runtime/webhooks/mcp"),
+        //    Name = "MCP Client",
+        //    TransportMode = HttpTransportMode.StreamableHttp,
+        //    AdditionalHeaders = new Dictionary<string, string>
+        //    {
+        //        {
+        //            "x-functions-key", "REDACTED"
+        //        }
+        //    }
+        //};
+
+        //var mcpClient2 = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions2));
+        //var externalTools2 = await mcpClient2.ListToolsAsync();
+        //tools.AddRange(externalTools2);
+
+        var httpClientTransportOptionsGitHub = new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(envVars["GITHUB_MCP_SERVER_URL"]),
+            Name = "GitHub MCP",
+            TransportMode = HttpTransportMode.StreamableHttp,
+            AdditionalHeaders = new Dictionary<string, string>()
+            {
+                { "Authorization", envVars["GITHUB_PAT_TOKEN"] }
+            }
+        };        
+
+        McpClient githubMcpClient = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptionsGitHub));
+        var externalToolsGithub = await githubMcpClient.ListToolsAsync();
+        tools.AddRange(externalToolsGithub);
+
+        return tools;
+    }
+
+
 }
+

@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft. All rights reserved.
 using agentic_agent_101;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using dotenv.net;
+
+DotEnv.Load();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient().AddLogging();
