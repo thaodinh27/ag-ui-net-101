@@ -16,8 +16,6 @@ public static class AgenticAgent
     private static readonly Dictionary<string, string> envVars = new Dictionary<string, string>(DotEnv.Read());
     public static async Task<AIAgent> CreateAgent()
     {
-
-
         var endpoint = envVars["AZURE_OPENAI_ENDPOINT_URL"];
         var key = envVars["AZURE_OPENAI_KEY"];
         var deploymentName = "gpt-5-chat";
