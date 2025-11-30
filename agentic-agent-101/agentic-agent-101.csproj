@@ -14,7 +14,13 @@
     <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.0.0-preview.251125.1" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.0.1-preview.1.25571.5" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.4.1-preview.1" />
-      <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.9.0" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.3.0" />
+    <PackageReference Include="Microsoft.Agents.AI.DevUI" Version="1.0.0-preview.251125.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Hosting" Version="1.0.0-preview.251125.1" />
+    <PackageReference Include="Microsoft.Agents.AI.Hosting.OpenAI" Version="1.0.0-alpha.251125.1" />
   </ItemGroup>
 
 </Project>

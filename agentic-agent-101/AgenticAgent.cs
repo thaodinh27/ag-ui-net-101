@@ -14,86 +14,132 @@ namespace agentic_agent_101;
 public static class AgenticAgent
 {
     private static readonly Dictionary<string, string> envVars = new Dictionary<string, string>(DotEnv.Read());
-    public static async Task<AIAgent> CreateAgent()
+    
+    public static async Task<AIAgent> CreateAgent(
+        Microsoft.AspNetCore.Http.IHttpContextAccessor? httpContextAccessor = null,
+        IChatClient? chatClient = null)
     {
-        var endpoint = envVars["AZURE_OPENAI_ENDPOINT_URL"];
-        var key = envVars["AZURE_OPENAI_KEY"];
-        var deploymentName = "gpt-5-chat";
-        ChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
-            .GetChatClient(deploymentName);
+        // Use provided chatClient or create a new one (fallback for backward compatibility)
+        if (chatClient == null)
+        {
+            var endpoint = envVars["AZURE_OPENAI_ENDPOINT_URL"];
+            var key = envVars["AZURE_OPENAI_KEY"];
+            var deploymentName = "gpt-5-chat";
+            chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
+                .GetChatClient(deploymentName)
+                .AsIChatClient();
+        }
 
-
-        var tools = await CollectTools();
-        AIAgent agent = chatClient.AsIChatClient().CreateAIAgent(
+        // Collect dynamic MCP tools that will use the current user's token from httpContextAccessor
+        var tools = await CollectDynamicTools(httpContextAccessor);
+        
+        AIAgent agent = chatClient.CreateAIAgent(
             name: "AGUIAssistant",
             instructions: "You are a helpful assistant.",
             tools: tools);
 
-        var middleAgent = agent.AsBuilder()
-                //.Use(CustomAgentRunMiddleware)
-                //.Use(CustomFunctionCallingMiddleware)
+        // Apply function-calling middleware to log tool invocations
+        var middlewareAgent = agent.AsBuilder()
+                .Use((agentParam, context, next, cancellationToken) => 
+                    CustomFunctionCallingMiddleware(agentParam, context, next, httpContextAccessor, cancellationToken))
                 .Build();
 
-
-        return agent;
+        return middlewareAgent;
     }
 
-    //public static 
-
-
-    public static async Task<List<AITool>> CollectTools()
+    private static async ValueTask<object?> CustomFunctionCallingMiddleware(
+        AIAgent agent,
+        FunctionInvocationContext context,
+        Func<FunctionInvocationContext, CancellationToken, ValueTask<object?>> next,
+        Microsoft.AspNetCore.Http.IHttpContextAccessor? httpContextAccessor,
+        CancellationToken cancellationToken)
     {
-        var httpClientTransportOptions = new HttpClientTransportOptions
+        var functionName = context.Function.Name;
+        Console.WriteLine($"[Middleware] Invoking tool: {functionName}");
+
+        // Extract user's bearer token from current HTTP context (if available)
+        var rawToken = httpContextAccessor?.HttpContext?.User?.FindFirst("raw_token")?.Value;
+        
+        if (!string.IsNullOrEmpty(rawToken))
         {
-            Endpoint = new Uri(envVars["WEBAPP_MCP_SERVER_URL"]),
-            Name = "MCP Client",
-            TransportMode = HttpTransportMode.StreamableHttp,
-            AdditionalHeaders = new Dictionary<string, string>() {
-                    {"Authorization", envVars["WEBAPP_MCP_BEARER_TOKEN"] }
-                }
-        };
+            Console.WriteLine($"[Middleware] User token present for: {functionName}");
+        }
+        else
+        {
+            Console.WriteLine($"[Middleware] No user token for: {functionName}");
+        }
+
+        var result = await next(context, cancellationToken);
+        Console.WriteLine($"[Middleware] Tool completed: {functionName}");
+        return result;
+    }
+
+    /// <summary>
+    /// Creates dynamic MCP tool wrappers that use the current user's bearer token on each invocation
+    /// </summary>
+    public static async Task<List<AITool>> CollectDynamicTools(Microsoft.AspNetCore.Http.IHttpContextAccessor? httpContextAccessor)
+    {
         List<AITool> tools = new List<AITool>();
-        McpClient mcpClient = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions));
-        var externalTools = await mcpClient.ListToolsAsync();
-        tools.AddRange(externalTools);
 
-        // Azure Functions: MCP server
+        // Get tool schemas from MCP server (using default token just for listing)
+        var tempMcpClient = await CreateMcpClient(envVars["WEBAPP_MCP_SERVER_URL"], envVars["WEBAPP_MCP_BEARER_TOKEN"]);
+        var mcpToolSchemas = await tempMcpClient.ListToolsAsync();
 
-        //var httpClientTransportOptions2 = new HttpClientTransportOptions
-        //{
-        //    Endpoint = new Uri("https://func-api-d52wwmub64tae.azurewebsites.net/runtime/webhooks/mcp"),
-        //    Name = "MCP Client",
-        //    TransportMode = HttpTransportMode.StreamableHttp,
-        //    AdditionalHeaders = new Dictionary<string, string>
-        //    {
-        //        {
-        //            "x-functions-key", "REDACTED"
-        //        }
-        //    }
-        //};
-
-        //var mcpClient2 = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptions2));
-        //var externalTools2 = await mcpClient2.ListToolsAsync();
-        //tools.AddRange(externalTools2);
-
-        var httpClientTransportOptionsGitHub = new HttpClientTransportOptions
+        // Create wrapper tools that will use current user's token when invoked
+        foreach (var toolSchema in mcpToolSchemas)
         {
-            Endpoint = new Uri(envVars["GITHUB_MCP_SERVER_URL"]),
-            Name = "GitHub MCP",
-            TransportMode = HttpTransportMode.StreamableHttp,
-            AdditionalHeaders = new Dictionary<string, string>()
-            {
-                { "Authorization", envVars["GITHUB_PAT_TOKEN"] }
-            }
-        };        
+            // Create a dynamic wrapper function that recreates MCP client with user token
+            var wrappedTool = AIFunctionFactory.Create(
+                async (IDictionary<string, object?> arguments) =>
+                {
+                    // Get current user's token from HttpContext
+                    var userToken = httpContextAccessor?.HttpContext?.User?.FindFirst("raw_token")?.Value;
+                    var authToken = !string.IsNullOrEmpty(userToken) 
+                        ? $"Bearer {userToken}" 
+                        : envVars["WEBAPP_MCP_BEARER_TOKEN"];
 
-        McpClient githubMcpClient = await McpClient.CreateAsync(new HttpClientTransport(httpClientTransportOptionsGitHub));
-        var externalToolsGithub = await githubMcpClient.ListToolsAsync();
-        tools.AddRange(externalToolsGithub);
+                    Console.WriteLine($"[Dynamic Tool] Creating MCP client for {toolSchema.Name} with user token");
+
+                    // Create fresh MCP client with current user's authorization token
+                    var mcpClient = await CreateMcpClient(envVars["WEBAPP_MCP_SERVER_URL"], authToken);
+                    
+                    // Invoke the actual MCP tool
+                    var readOnlyArgs = arguments as IReadOnlyDictionary<string, object?> ?? new Dictionary<string, object?>(arguments);
+                    var result = await mcpClient.CallToolAsync(toolSchema.Name, readOnlyArgs);
+                    return result;
+                },
+                name: toolSchema.Name,
+                description: toolSchema.Description
+            );
+
+            tools.Add(wrappedTool);
+        }
+
+        // Add GitHub MCP tools (using PAT token, not user token)
+        var githubMcpClient = await CreateMcpClient(
+            envVars["GITHUB_MCP_SERVER_URL"], 
+            envVars["GITHUB_PAT_TOKEN"]);
+        var githubTools = await githubMcpClient.ListToolsAsync();
+        tools.AddRange(githubTools);
 
         return tools;
     }
 
-
+    /// <summary>
+    /// Helper to create MCP client with specified authorization token
+    /// </summary>
+    private static async Task<McpClient> CreateMcpClient(string endpoint, string authToken)
+    {
+        var options = new HttpClientTransportOptions
+        {
+            Endpoint = new Uri(endpoint),
+            Name = "MCP Client",
+            TransportMode = HttpTransportMode.StreamableHttp,
+            AdditionalHeaders = new Dictionary<string, string>()
+            {
+                {"Authorization", authToken }
+            }
+        };
+        return await McpClient.CreateAsync(new HttpClientTransport(options));
+    }
 }
-
